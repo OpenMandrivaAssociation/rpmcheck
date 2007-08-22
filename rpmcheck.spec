@@ -1,5 +1,5 @@
 %define name	rpmcheck
-%define version	0.0.2253
+%define version	0.0.2368
 %define release	%mkrel 1
 
 Summary:	A tool to check consistency of rpm repositories
@@ -15,6 +15,7 @@ URL:		http://www.edos-project.org/xwiki/bin/Main/Wp2
 Source:		%name-%version.tar.bz2
 Buildroot:	%_tmppath/%name-%version-%release-buildroot
 BuildRequires:	ocaml
+Patch0: rpmcheck-0.0.2368-handle-suggests.patch
 
 %description
 rpmcheck is a tool to check consistency of Mandriva Linux rpm repositories
@@ -22,6 +23,7 @@ rpmcheck is a tool to check consistency of Mandriva Linux rpm repositories
 
 %prep
 %setup -q
+%patch0 -p1 -z .pix
 
 %build
 %__make rpmcheck
