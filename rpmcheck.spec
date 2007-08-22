@@ -23,7 +23,7 @@ rpmcheck is a tool to check consistency of Mandriva Linux rpm repositories
 
 %prep
 %setup -q
-%patch0 -p1 -z .pix
+%patch0 -p1
 
 %build
 %__make rpmcheck
