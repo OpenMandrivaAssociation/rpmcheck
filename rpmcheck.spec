@@ -13,7 +13,6 @@ URL:		http://www.edos-project.org/xwiki/bin/Main/Wp2
 # There is no released version yet. Sources are from the svn depot at
 # https://protactinium.pps.jussieu.fr:12345/svn/edos/users/vouillon
 Source:		%name-%version.tar.bz2
-Buildroot:	%_tmppath/%name-%version-%release-buildroot
 BuildRequires:	ocaml
 Patch0: rpmcheck-0.0.2368-handle-suggests.patch
 
