@@ -1,6 +1,6 @@
 %define name	rpmcheck
 %define version	0.0.2368
-%define release	%mkrel 1
+%define release	%mkrel 3
 
 Summary:	A tool to check consistency of rpm repositories
 Name:		%name
