@@ -16,6 +16,7 @@ Source:		%name-%version.tar.bz2
 Buildroot:	%_tmppath/%name-%version-%release-buildroot
 BuildRequires:	ocaml
 Patch0: rpmcheck-0.0.2368-handle-suggests.patch
+Patch1:	rpmcheck-0.0.2368-no-doc-conflict.patch
 
 %description
 rpmcheck is a tool to check consistency of Mandriva Linux rpm repositories
@@ -24,6 +25,7 @@ rpmcheck is a tool to check consistency of Mandriva Linux rpm repositories
 %prep
 %setup -q
 %patch0 -p1
+%patch1 -p1
 
 %build
 %__make rpmcheck
