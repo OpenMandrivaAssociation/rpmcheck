@@ -1,6 +1,6 @@
 %define name	rpmcheck
 %define version	0.0.2368
-%define release	%mkrel 8
+%define release	%mkrel 9
 
 %if %mdkversion > 200900
 %define camlzip_inc +camlzip
