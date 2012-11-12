@@ -1,0 +1,15 @@
+--- rpmcheck-0.0.2368/rpm.ml.pix	2006-10-27 15:13:56.000000000 +0200
++++ rpmcheck-0.0.2368/rpm.ml	2007-08-22 15:30:05.000000000 +0200
+@@ -345,8 +345,11 @@ let intern_flags f =
+   |  4 -> SL
+   |  _ -> Util.fail (Format.sprintf "Wrong flag %d" (f land 15))
+ 
++(* RPMSENSE_RPMLIB | RPMSENSE_MISSINGOK *)
++let requires_to_skip_bitmask = (1 lsl 24) lor (1 lsl 19)
++
+ let rpmlib_dep name flags i =
+-  flags.(i) land (1 lsl 24) <> 0 ||
++  flags.(i) land requires_to_skip_bitmask <> 0 ||
+   let nm = name.(i) in
+   (String.length nm > 8 &&
+    nm.[0] = 'r' && nm.[1] = 'p' && nm.[2] = 'm' && nm.[3] = 'l' &&

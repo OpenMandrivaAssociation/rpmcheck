@@ -1,0 +1,161 @@
+diff -p -up ./Makefile.pix ./Makefile
+--- ./Makefile.pix	2006-03-02 16:18:39.000000000 +0100
++++ ./Makefile	2008-09-04 18:53:09.000000000 +0200
+@@ -3,8 +3,10 @@ OCAMLC=ocamlc
+ OCAMLOPT=ocamlopt
+ OCAMLDEP=ocamldep
+ 
++COMPFLAGS = -I +camlzip
++
+ OBJS = util.cmx common.cmx solver.cmx
+-OPTLINKFLAGS=unix.cmxa str.cmxa
++OPTLINKFLAGS=unix.cmxa str.cmxa zip.cmxa -I +camlzip
+ 
+ all: debcheck rpmcheck checkupdate checkconflicts
+ 
+diff -p -up ./check_conflicts.ml.pix ./check_conflicts.ml
+--- ./check_conflicts.ml.pix	2006-03-09 10:26:23.000000000 +0100
++++ ./check_conflicts.ml	2008-09-04 18:52:53.000000000 +0200
+@@ -334,7 +334,7 @@ Format.eprintf "%s %a@." p.package print
+ let parse_packages ch =
+   let i = start_from_channel ch in
+   let pool = new_pool () in
+-  let st = Common.start_parsing true ch in
++  let st = Common.start_parsing true (Common.Uncompressed ch) in
+   parse_packages_rec pool st i;
+   Common.stop_parsing st;
+   pool
+diff -p -up ./common.ml.pix ./common.ml
+--- ./common.ml.pix	2005-12-08 11:25:50.000000000 +0100
++++ ./common.ml	2008-09-04 18:53:31.000000000 +0200
+@@ -1,23 +1,33 @@
++type in_channel_ = Compressed of Gzip.in_channel | Uncompressed of in_channel
+ 
+ type st =
+   { time : float;
+     active : bool;
+-    channel : in_channel;
++    channel : in_channel_;
+     length : int;
+     mutable count : int;
+     mutable percent : float }
+ 
++let to_uncompressed = function
++  | Uncompressed ch -> ch
++  | Compressed _ -> failwith "to_uncompressed called with compressed channel"
++
++let in_channel_length_ = function
++  | Compressed _ -> 0
++  | Uncompressed ch -> 
++      begin try in_channel_length ch with Sys_error _ -> 0 end
++
+ let start_parsing active ch =
+   { time = Unix.gettimeofday ();
+     active = active; channel = ch;
+-    length = begin try in_channel_length ch with Sys_error _ -> 0 end;
++    length = in_channel_length_ ch;
+     count = 0; percent = 0. }
+ 
+ let parsing_tick st =
+   st.count <- st.count + 1;
+   if st.active then begin
+     if st.length > 0 then begin
+-      let p = pos_in st.channel in
++      let p = pos_in (to_uncompressed st.channel) in
+       let pc = float p *. 100. /. float st.length in
+       if pc >= st.percent then begin
+         Util.set_msg (Format.sprintf
+diff -p -up ./common.mli.pix ./common.mli
+--- ./common.mli.pix	2005-12-05 19:13:41.000000000 +0100
++++ ./common.mli	2008-09-04 18:53:25.000000000 +0200
+@@ -1,6 +1,7 @@
++type in_channel_ = Compressed of Gzip.in_channel | Uncompressed of in_channel
+ 
+ type st
+-val start_parsing : bool -> in_channel -> st
++val start_parsing : bool -> in_channel_ -> st
+ val parsing_tick : st -> unit
+ val stop_parsing : st -> unit
+ 
+diff -p -up ./deb.ml.pix ./deb.ml
+--- ./deb.ml.pix	2006-10-27 15:16:37.000000000 +0200
++++ ./deb.ml	2008-09-04 18:53:18.000000000 +0200
+@@ -332,7 +332,7 @@ Format.eprintf "%s %a@." p.package print
+ 
+ let parse_packages pool ch =
+   let i = start_from_channel ch in
+-  let st = Common.start_parsing true ch in
++  let st = Common.start_parsing true (Common.Uncompressed ch) in
+   parse_packages_rec pool st i;
+   Common.stop_parsing st
+ 
+diff -p -up ./rpm.ml.pix ./rpm.ml
+--- ./rpm.ml.pix	2008-09-04 18:52:39.000000000 +0200
++++ ./rpm.ml	2008-11-28 14:32:23.000000000 +0100
+@@ -24,9 +24,21 @@ let intern_typ i =
+   | _ -> Util.print_warning (Format.sprintf "unknown type %d" i);
+          UNKOWNTYPE i
+ 
++let compressed_input = ref false
++
++let really_input_ = function
++  | Common.Compressed ch -> Gzip.really_input ch
++  | Common.Uncompressed ch -> really_input ch
++
++let with_file f file =
++  if !compressed_input then
++    (let ch = Gzip.open_in file in f (Common.Compressed ch); Gzip.close_in ch)
++  else
++    (let ch = open_in file in f (Common.Uncompressed ch); close_in ch)      
++
+ let substring ch l =
+  let s = String.create l in
+- really_input ch s 0 l;
++ really_input_ ch s 0 l;
+  s
+ 
+ let int ch =
+@@ -697,7 +709,7 @@ let parse_header ch =
+   with Skip ->
+     Util.reset_warning_location ()
+ 
+-let parse_headers ch =
++let parse_headers (ch : Common.in_channel_) =
+   let st = Common.start_parsing (not !dump_fields) ch in
+   begin try while true do
+     parse_header ch;
+@@ -911,6 +923,9 @@ Arg.parse
+    "-successes",
+    Arg.Unit (fun () -> show_failure := false),
+    " Only show successes";
++   "-compressed-input",
++   Arg.Unit (fun () -> compressed_input := true),
++   " Read compressed stream";
+    "-dump",
+    Arg.Unit (fun () -> dump_fields := true),
+    " Dump hdlist contents";
+@@ -932,10 +947,9 @@ Arg.parse
+     'emacs=21.3-20mdk').\n\
+     \n\
+     Options:");
+-parse_headers stdin;
++parse_headers (if !compressed_input then Common.Compressed (Gzip.open_in_chan stdin) else Common.Uncompressed stdin);
+ let check_num = !num in
+-List.iter
+-  (fun s -> let ch = open_in s in parse_headers ch; close_in ch) !files;
++List.iter (with_file parse_headers) !files;
+ if !dump_fields then exit 0;
+ let st = generate_rules () in
+ let tested = Array.make !num (!packages <> []) in
+diff -p -up ./update_check.ml.pix ./update_check.ml
+--- ./update_check.ml.pix	2006-03-07 17:02:46.000000000 +0100
++++ ./update_check.ml	2008-09-04 18:52:59.000000000 +0200
+@@ -360,7 +360,7 @@ Format.eprintf "%s %a@." p.package print
+ let parse_packages ch =
+   let i = start_from_channel ch in
+   let pool = new_pool () in
+-  let st = Common.start_parsing true ch in
++  let st = Common.start_parsing true (Common.Uncompressed ch) in
+   parse_packages_rec pool st i;
+   Common.stop_parsing st;
+   pool

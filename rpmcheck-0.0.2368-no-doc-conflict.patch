@@ -1,0 +1,27 @@
+diff -p -up rpmcheck-0.0.2368/rpm.ml.pix rpmcheck-0.0.2368/rpm.ml
+--- rpmcheck-0.0.2368/rpm.ml.pix	2008-08-18 18:29:13.000000000 +0200
++++ rpmcheck-0.0.2368/rpm.ml	2008-08-18 19:10:00.000000000 +0200
+@@ -757,6 +757,15 @@ let add_dependencies pr p dep kind =
+             List.iter (fun p' -> add_conflict pr p p' (R_Explicit r)) l)
+     dep
+ 
++let str_begins_with s prefix =
++  String.sub s 0 (min (String.length s) (String.length prefix)) = prefix
++
++let is_a_doc_file f =
++  let ignorelist = [ "/usr/share/man/"
++		   ; "/usr/share/gtk-doc/html/"
++		   ; "/usr/share/gnome/html/" ] in
++  List.exists (str_begins_with f) ignorelist
++
+ let generate_rules () =
+   let st = Common.start_generate (not !print_rules) !num in
+   let pr = Solver.initialize_problem ~print_var:print_pack !num in
+@@ -764,6 +773,7 @@ let generate_rules () =
+   let h = Hashtbl.create 127 in
+   Hashtbl.iter
+     (fun (d, f) {contents = l} ->
++       if not (is_a_doc_file d) then
+        match l with
+          [] | [_] -> ()
+        | (inf, _) :: _ ->
