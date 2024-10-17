@@ -15,7 +15,7 @@ Release:	%release
 License:	GPL
 Group:		System/Configuration/Packaging
 # No website yet
-URL:		http://www.edos-project.org/xwiki/bin/Main/Wp2
+URL:		https://www.edos-project.org/xwiki/bin/Main/Wp2
 # There is no released version yet. Sources are from the svn depot at
 # https://protactinium.pps.jussieu.fr:12345/svn/edos/users/vouillon
 Source:		%name-%version.tar.bz2
